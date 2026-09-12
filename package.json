@@ -1,0 +1,14 @@
+{
+  "name": "scc-line-report",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SHOPLINE daily sales report sent to LINE via GitHub Actions",
+  "scripts": {
+    "start": "node src/report.js",
+    "check": "node --check src/report.js"
+  },
+  "dependencies": {
+    "luxon": "^3.7.2"
+  }
+}
