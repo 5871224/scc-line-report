@@ -21,6 +21,10 @@ test('encodes customers as the fixed API payload', () => {
 
 test('rejects API failures and accepts OK', () => {
   assert.equal(assertApiSuccess([{ Code: 'OK', CustomerCount: 2 }]).CustomerCount, 2);
+  assert.equal(
+    assertApiSuccess([{ 處理筆數: 2, JSON來源筆數: 2 }]).CustomerCount,
+    2,
+  );
   assert.throws(
     () => assertApiSuccess([{ Code: 'AUTH_FAILED' }]),
     /AUTH_FAILED/,

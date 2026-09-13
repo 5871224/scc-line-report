@@ -70,10 +70,16 @@ export function customerSyncPayload(customers, backendKey) {
 
 export function assertApiSuccess(data) {
   const result = Array.isArray(data) ? data[0] : null;
-  if (!result || result.Code !== 'OK') {
-    throw new Error(`Customer sync API failed: ${result?.Code ?? 'INVALID_RESPONSE'}`);
+  if (result?.Code === 'OK') {
+    return result;
   }
-  return result;
+
+  if (Number.isInteger(result?.JSON來源筆數)) {
+    // ponytail: 更新客戶 already returns this legacy first result set.
+    return { Code: 'OK', CustomerCount: result.JSON來源筆數 };
+  }
+
+  throw new Error(`Customer sync API failed: ${result?.Code ?? 'INVALID_RESPONSE'}`);
 }
 
 async function updateCustomers(customers) {
