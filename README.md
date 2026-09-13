@@ -24,22 +24,13 @@
 
 1. 取得 SHOPLINE 最近 30 分鐘更新的客戶（與原 n8n 流程相同）。
 2. 將客戶陣列轉成 JSON。
-3. 以參數化查詢執行 SQL Server 的 `[更新客戶]` stored procedure。
+3. 呼叫固定的 `API_CUSTOMER_SYNC`，由後端驗證後執行 `[更新客戶]` stored procedure。
 
-另外建立以下 repository secrets：
+另外建立以下 repository secret：
 
-- `SQL_SERVER`：SQL Server 主機名稱或 IP。
-- `SQL_PORT`：連接埠；未設定時程式使用 `1433`。
-- `SQL_DATABASE`：資料庫名稱。
-- `SQL_USER`：登入帳號。
-- `SQL_PASSWORD`：登入密碼。
+- `CUSTOMER_SYNC_BACKEND_KEY`：僅供客戶同步 API 使用的隨機金鑰。
 
-若連線設定需要，可建立 repository variables：
-
-- `SQL_ENCRYPT`：預設為 `true`。
-- `SQL_TRUST_SERVER_CERTIFICATE`：預設為 `false`。
-
-GitHub-hosted runner 必須能從網際網路連到 SQL Server。若資料庫只開放內網，需使用可連到該內網的 self-hosted runner。
+GitHub runner 不直接持有或使用 SQL Server 帳密。
 
 Token 不應寫入程式碼、README、Issue 或 Actions Log。
 

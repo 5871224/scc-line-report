@@ -30,14 +30,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --omit=dev
 
-      - name: Sync SHOPLINE customers to SQL Server
+      - name: Validate customer sync
+        run: npm run check
+
+      - name: Sync SHOPLINE customers through fixed API
         env:
           SHOPLINE_TOKEN: ${{ secrets.SHOPLINE_TOKEN }}
-          SQL_SERVER: ${{ secrets.SQL_SERVER }}
-          SQL_PORT: ${{ secrets.SQL_PORT }}
-          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-          SQL_USER: ${{ secrets.SQL_USER }}
-          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
-          SQL_ENCRYPT: ${{ vars.SQL_ENCRYPT }}
-          SQL_TRUST_SERVER_CERTIFICATE: ${{ vars.SQL_TRUST_SERVER_CERTIFICATE }}
+          CUSTOMER_SYNC_BACKEND_KEY: ${{ secrets.CUSTOMER_SYNC_BACKEND_KEY }}
         run: npm run sync-customers

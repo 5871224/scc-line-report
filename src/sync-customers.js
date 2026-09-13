@@ -1,13 +1,12 @@
-import sql from 'mssql';
+import { pathToFileURL } from 'node:url';
 import { DateTime } from 'luxon';
 
 const REQUIRED_ENV = [
   'SHOPLINE_TOKEN',
-  'SQL_SERVER',
-  'SQL_DATABASE',
-  'SQL_USER',
-  'SQL_PASSWORD',
+  'CUSTOMER_SYNC_BACKEND_KEY',
 ];
+
+const CUSTOMER_SYNC_API = 'https://scc.scctoys.com.tw/api/API_CUSTOMER_SYNC';
 
 const CUSTOMER_FIELDS = [
   'items.id',
@@ -28,14 +27,8 @@ function requireEnvironment() {
   }
 }
 
-function envBoolean(name, defaultValue) {
-  const value = process.env[name];
-  if (value === undefined || value === '') return defaultValue;
-  return value.toLowerCase() === 'true';
-}
-
-function updatedAfter() {
-  return DateTime.utc().minus({ minutes: 30 }).toFormat('yyyy-MM-dd HH:mm:ss');
+export function updatedAfter(now = DateTime.utc()) {
+  return now.minus({ minutes: 30 }).toFormat('yyyy-MM-dd HH:mm:ss');
 }
 
 async function fetchCustomers() {
@@ -49,6 +42,7 @@ async function fetchCustomers() {
     headers: {
       accept: 'application/json',
       authorization: `Bearer ${process.env.SHOPLINE_TOKEN}`,
+      'user-agent': 'scc-line-report/1.0',
     },
   });
 
@@ -67,42 +61,54 @@ async function fetchCustomers() {
   return data.items;
 }
 
-async function updateCustomers(customers) {
-  const port = Number.parseInt(process.env.SQL_PORT ?? '1433', 10);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('SQL_PORT must be an integer from 1 to 65535.');
-  }
+export function customerSyncPayload(customers, backendKey) {
+  return {
+    API金鑰: backendKey,
+    JSON: JSON.stringify(customers),
+  };
+}
 
-  const pool = await sql.connect({
-    server: process.env.SQL_SERVER,
-    port,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: {
-      encrypt: envBoolean('SQL_ENCRYPT', true),
-      trustServerCertificate: envBoolean('SQL_TRUST_SERVER_CERTIFICATE', false),
+export function assertApiSuccess(data) {
+  const result = Array.isArray(data) ? data[0] : null;
+  if (!result || result.Code !== 'OK') {
+    throw new Error(`Customer sync API failed: ${result?.Code ?? 'INVALID_RESPONSE'}`);
+  }
+  return result;
+}
+
+async function updateCustomers(customers) {
+  const response = await fetch(CUSTOMER_SYNC_API, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'user-agent': 'scc-line-report/1.0',
     },
+    body: JSON.stringify(customerSyncPayload(
+      customers,
+      process.env.CUSTOMER_SYNC_BACKEND_KEY,
+    )),
   });
 
-  try {
-    await pool.request()
-      .input('customersJson', sql.NVarChar(sql.MAX), JSON.stringify(customers))
-      .query('EXEC [更新客戶] @customersJson');
-  } finally {
-    await pool.close();
+  if (!response.ok) {
+    throw new Error(`Customer sync API request failed: HTTP ${response.status}`);
   }
+
+  const data = await response.json();
+  return assertApiSuccess(data);
 }
 
 async function main() {
   requireEnvironment();
   const customers = await fetchCustomers();
   console.log(`Fetched ${customers.length} updated customer(s) from SHOPLINE.`);
-  await updateCustomers(customers);
-  console.log('Customer update stored procedure completed successfully.');
+  const result = await updateCustomers(customers);
+  console.log(`Customer sync API completed successfully for ${result.CustomerCount} customer(s).`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
