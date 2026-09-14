@@ -3,7 +3,7 @@ name: SHOPLINE LINE Report
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '50 7 * * *'
       timezone: 'Asia/Taipei'
 
 permissions:
